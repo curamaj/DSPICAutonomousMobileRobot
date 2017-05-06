@@ -1,3 +1,4 @@
+/* Include file for all of teh roobocar definitions */
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -11,10 +12,14 @@
 typedef bool boolean; //tdbool for some reason does not define this ??
 
 #define MAXLINELENGTH 128 // Max line length is around 80.
-#define pi 3.14159265358979323846
+#define pi 3.14159265358979323846 // Definition of the magic number Pi
 
-typedef struct NMEA_record {
-
+typedef struct NMEA_record { 
+	// This is taken from Aurdino, many fields are not used but I do not
+	// want to much around with the for now. We can clean this up later.
+	// I added and calculate my own fields called longitude2, latitude2
+	// which I use. 
+							
   boolean valid; // true => Valid record, false => invalid
   char raw[MAXLINELENGTH];
   uint8_t hour, minute, seconds, year, month, day;
@@ -38,22 +43,23 @@ typedef struct NMEA_record {
   uint8_t fixquality, satellites;
 } nmea_rec;
 
-
+// Microcontroller: dspic33fj128mc802 Magic 
 #define FREQ62_5HZ 7605 // Use this to get 62.5 Hz 
-#define FREQ50HZ 9350 / / I get 50.74 Hz!!!
+#define FREQ50HZ 9350 / / 50.74 Hz
+double TIMETOTRAVELAMETER = 1.5; // This is adhooc at best!!! Calculated based
+								 // on actual car movement :(
 
-/* Global data They all start wuith rc_*/
-nmea_rec rc_src; // Source Point A - This is teh co-ordinates of the car
-nmea_rec rc_dst; // Destination Point B
+/* Global data  Please note that They all start wuith rc_ */
+nmea_rec rc_src; // This is teh co-ordinates of the car got via GPSFix.
+nmea_rec rc_dst; // Destination Point B. Human entered co ordinates
 double rc_dist2target; // Straignt line distance to target from source
-double rc_proximity_distance = .10; // 1 Meter 
-double	rc_angle = 0.0;
-double	rc_travel_distance = 0.0;
-double rc_one_fwd_pulse_distance = 1.0;
-double rc_one_bkwd_pulse_distance = 1.0;
+double rc_proximity_distance = .10; // 1 Meter . When we call Stop() one meter
+									// before, the momentum carries it one meter									// Based on theory and experimentation.
+double	rc_angle = 0.0;				// Left or Right angle to turn.
 double rc_angle_per_pulse = 1.0;
+// PWM duty cycle definitions 
 int rc_full_cycle = 0;
-int	rc_left = 0;
+int	rc_left = 0; 
 int	rc_right =  0;
 int	rc_middle = 0;
 
@@ -62,19 +68,14 @@ int	rc_still = 0;
 int	rc_back = 0;
   
 // Function prototypes
-boolean parseNMEA(char *);
-uint8_t parseHex(char);
+boolean parseNMEA(char *); // Parse NMEA record. 
+uint8_t parseHex(char); // NMEA parser assist.
+
+// distance() is what I find on internet and it does not work.
+// distance2() is my routine, which accurately calculates the 
+// src to dst distance. I use distance2().
 double distance(double lat1, double lon1, double lat2, double lon2, char unit);
 double distance2(double lat1, double lon1, double lat2, double lon2, char unit);
-void Help(void);
-unsigned char GetInp(void);
-double GetFloatArg(void);
-void GetGPSFix(void);
-boolean TraceAndLogGPSRecord(nmea_rec *rec);
-void printfBT(char *buf );
-boolean GetGPRMCorGPGGA( char *buf, nmea_rec *gps_rec);
-boolean GetGPSLine(char *);
-
 
 // Car Parser structure
 typedef struct Parser {
@@ -88,6 +89,18 @@ ParserFunctions parse_function[CMDS];
 char  btbuf[BTBUF];
 int	exit_parser  = 0;
 int	log_data = 0;
+
+// Our parser entry point routines.
+void Help(void); // Help command to display the functions
+unsigned char GetInp(void); // Helper to UART input
+double GetFloatArg(void); // Helper to get the float number from input.
+void GetGPSFix(void); 	// Get GPS records, parse and once you 
+						// find a GPRMC or GPGGA with a fix fict it as source.
+void printfBT(char *buf ); // Bluetooth printf() function helper.
+boolean GetGPRMCorGPGGA( char *buf, nmea_rec *gps_rec); // Helper to GSFix()
+						// to look at only GPRMC or GPGGA record in GPS data.
+boolean GetGPSLine(char *);
+void Stop(void); // STop the car. 
 
 
 #endif

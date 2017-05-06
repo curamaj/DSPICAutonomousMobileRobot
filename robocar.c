@@ -1,3 +1,5 @@
+// Robocar.c : Main prigram as well as all needed library
+// Support in a single file.
 #include <xc.h>
 #include "./robocar.h"
 
@@ -48,13 +50,14 @@
 #define PPSUnLock __builtin_write_OSCCONL(OSCCON & 0xBF)
 #define PPSLock __builtin_write_OSCCONL(OSCCON | 0x40)
 
+// I cannot find bzero() defined anywhere, hence  wrote one.
 void crk_bzero(char *s, int n)
 {
 	int i;
 	for (i=0; i < n; i++) *s++ = 0;
 }
 
-//Generic SPI interface
+//Generic SPI interface Mostly from the text book.
 unsigned char SPI_Transmit(unsigned char TxValue)
 {
     while (SPI1STATbits.SPITBF == 1)
@@ -67,7 +70,7 @@ unsigned char SPI_Transmit(unsigned char TxValue)
 
 unsigned char SPI_Receive()
 {
-    printf( "CRK-DEBUG SPI STAT Bits = (%x) \n",SPI1STATbits.SPITBF);
+    printf( "DEBUG SPI STAT Bits = (%x) \n",SPI1STATbits.SPITBF);
     while (SPI1STATbits.SPITBF == 1)
 			;// wait until TX buffer is empty due to a prior process
     SPI1BUF = 0x00; // when empty, send the junk byte (0x00) to the TC buffer.
@@ -166,6 +169,7 @@ unsigned char WriteStatusReg(unsigned char SendByte)
     LATBbits.LATB6 = 1;
 	return(junk);
 }
+
 unsigned char ReadStatusReg()
 {
 	LATBbits.LATB6 = 0; 
@@ -175,83 +179,39 @@ unsigned char ReadStatusReg()
 	return(status);
 }	
 //These delay functions needs tuning, once I freee on CPU frequency
-void delay(int lim1, int lim2)
+// For now this seems to work. I get the delay accurately.
+void delay_ms(int n)
 {
-	int i, j;
-	int k;
-	for(i=0; i < lim1; i++)
-		for (j = 0; j < lim2; j++)
-			k = 23;	
+	int i,j, k, l;
+	for (i=0; i < n; i++)
+		for(j=0; j < 17; j++)
+			for(k=0; k < 4; k++)
+			l = i+j;
+			l = i+j;
+
 }
 
 void DelayInSeconds(int seconds)
 {
 	int i;
+	int j;
     
     for(i=0; i < seconds; i++) {
-        delay(500, 10); //One second approx delay
+		for ( j = 0; j < 1000; j++) // 100 ms = 1 sec.
+        	delay_ms(1); //One second approx delay
     }
 }
-void delay_ms(int n)
-{
-	int i,j, k;
-	for (i=0; i < n; i++)
-		for(j=0; j < 10; j++)
-			k = i+j;
-
-}
-void LEDInit()
-{
-    //IO Definiton
-    AD1PCFGL = 0xFFFF; //Pins RA0 and RA1 are assigned to analog pins
-    TRISAbits.TRISA0 = 1;// Pin in RA0 assigned input
-    TRISAbits.TRISA1 = 0; // Pin in RA1 assigned as Output
-}
-
-void LEDOn(int time)
-{
-	int i;
-	int count = time * 1;
-	for (i=0; i < count; i++) {
-        if (PORTAbits.RA0 == 1){
-            LATAbits.LATA1 = 1;
-        } else {
-            LATAbits.LATA1 = 0;
-        }
-    }        
-}
-
-void LEDBlink(int count)
-{
-	int i;
-
-	for(i=0; i < count; i++) {
-		if(PORTAbits.RA0 == 1) {
-			LATAbits.LATA1 = 0;
-            DelayInSeconds(2);
-			LATAbits.LATA1 = 1;
-			DelayInSeconds(3);
-		} else {
-			LATAbits.LATA1 = 0;
-		}
-	}
-}
-
-void LEDOff()
-{
-    if (PORTAbits.RA0 == 1) {
-            LATAbits.LATA1 = 0;
-        }
-}
-void LEDTest(void)
-{
-	printf("CRK-DEBUG Testing LED\n");
-	LEDBlink(2);
-	LEDOff();
-}
-
 
 //* PWM1 H1 controls channel CH1 
+void	TimeOfTravel(double rc_travel_distance, double *time, 
+									int *seconds, int *milliseconds)
+{
+	*time =  rc_travel_distance * TIMETOTRAVELAMETER; // This is adhooc !!!
+							// In the calibration we have made it takes 2 sec
+							// to travel a meter !!!
+	*seconds = (int) *time; /// Get the intpart
+	*milliseconds = (*time - *seconds) * 1000;
+}
 void TurnLeft(void)
 {
 	int n, i;
@@ -259,8 +219,8 @@ void TurnLeft(void)
 	rc_angle = GetFloatArg();
 	n = rc_angle/rc_angle_per_pulse;
 
-	printf("\n\r CRK-DEBUG rc_angle = (%f) no of pulses = (%d)", rc_angle, n);
-  	printf("CRK-DEBUG Servo test Left P1TPER = (%d) P1DC1 = (%d) \n", P1TPER, P1DC1);
+	printf("\n\r DEBUG rc_angle = (%f) no of pulses = (%d)", rc_angle, n);
+  	printf("DEBUG Servo test Left P1TPER = (%d) P1DC1 = (%d) \n", P1TPER, P1DC1);
 	for(i=0; i < n; i++) {
 		P1DC1 = rc_left; 
 		P1TCONbits.PTEN = 1;
@@ -270,8 +230,8 @@ void TurnLeft(void)
 void Middle(void)
 {
 	rc_angle = 0.0;
-	printf("\n\rCRK-DEBUG rc_angle = (%f)", rc_angle);
-	printf("CRK-DEBUG Servo test Middle P1TPER = (%d) P1DC1 = (%d) \n", P1TPER, P1DC1);
+	printf("\n\rDEBUG rc_angle = (%f)", rc_angle);
+	printf("DEBUG Servo test Middle P1TPER = (%d) P1DC1 = (%d) \n", P1TPER, P1DC1);
 		P1DC1 = rc_middle; 
 		P1TCONbits.PTEN = 1;
 }
@@ -283,8 +243,8 @@ void TurnRight(void)
 	rc_angle = GetFloatArg();
 	n = rc_angle/rc_angle_per_pulse;
 
-	printf("\n\r CRK-DEBUG rc_angle = (%f) no of pulses = (%d)", rc_angle, n);
-	printf("CRK-DEBUG Servo test Right P1TPER = (%d) P1DC1 = (%d) \n", P1TPER, P1DC1);
+	printf("\n\r DEBUG rc_angle = (%f) no of pulses = (%d)", rc_angle, n);
+	printf("DEBUG Servo test Right P1TPER = (%d) P1DC1 = (%d) \n", P1TPER, P1DC1);
 	for (i=0; i < n; i++) {
 		P1DC1 = rc_right; 
 		P1TCONbits.PTEN = 1;
@@ -293,33 +253,46 @@ void TurnRight(void)
 
 void MoveFwd(void)
 {
-	int n, i;
+	double time;
+	int seconds;
+	int milliseconds;
+	double travel_distance;
 
-	rc_travel_distance = GetFloatArg();
-	n = rc_travel_distance/rc_one_fwd_pulse_distance;
+	travel_distance = GetFloatArg();
 	
-	printf("\n\rCRK-DEBUG distance = (%f) no of pulses = (%d)", rc_travel_distance, n);
-	printf("CRK-DEBUG Servo test FWD !!! P2TPER = (%d) P2DC1 = (%d) rc_fwd = (%d) \n", P2TPER, P2DC1, rc_fwd);
-	for(i=0; i < n; i++) {
-		P2DC1 = rc_fwd; 
-		P2TCONbits.PTEN = 1;
-	}
+	printf("\n\rDEBUG distance = (%f)", travel_distance);
+	printf("DEBUG Servo test FWD !!! P2TPER = (%d) P2DC1 = (%d) rc_fwd = (%d) \n", P2TPER, P2DC1, rc_fwd);
+	TimeOfTravel(travel_distance, &time, &seconds, &milliseconds);
+
+	Stop(); // Always stop before moving forward ... otherwise the car does not work
+	P2DC1 = rc_fwd; 
+	P2TCONbits.PTEN = 1;
+ 	DelayInSeconds(seconds);
+	delay_ms(milliseconds);
+	Stop(); 
 }
 
 
 void MoveBack(void)
 {
-	int n, i;
+	double time;
+	int seconds;
+	int milliseconds;
+	double travel_distance;
 
-	n = rc_travel_distance/rc_one_bkwd_pulse_distance;
-	rc_travel_distance = GetFloatArg();
-	printf("\n\rCRK-DEBUG distance = (%f) no of pulses = (%d)", rc_travel_distance, n);
-	printf("SCRK-DEBUG ervo test Back !!! P2TPER = (%d) P2DC1 = (%d) rc_back = (%d) \n", P2TPER, P2DC1, rc_back);
+	travel_distance = GetFloatArg();
+	printf("\n\rDEBUG distance = (%f))", travel_distance);
+	printf("SDEBUG ervo test Back !!! P2TPER = (%d) P2DC1 = (%d) rc_back = (%d) \n", P2TPER, P2DC1, rc_back);
 
-	for(i=0; i < n; i++) {
-		P2DC1 = rc_back; 
-		P2TCONbits.PTEN = 1;
-	}
+
+	TimeOfTravel(travel_distance, &time, &seconds, &milliseconds);
+
+	Stop(); 
+	P2DC1 = rc_back; 
+	P2TCONbits.PTEN = 1;
+	DelayInSeconds(seconds);
+	delay_ms(milliseconds);
+	Stop(); 
 }
 
 
@@ -385,7 +358,8 @@ void ServoInit(void)
 	PWM2CON2bits.IUE = 0; //Updates are synchronized with timnebase
 	PWM2CON2bits.UDIS = 0; // Updates from perios and suty cycle registers are enabled
 //We need to fine tune these !!!
-	rc_fwd = 2 * 10.0 * rc_full_cycle / 100;
+//	rc_fwd = 2 * 10.0 * full_cycle / 100;
+	rc_fwd = 2 * 9.8 * rc_full_cycle / 100;
 	rc_still = 2 *  9.4 * rc_full_cycle / 100;
 	rc_back = 2 * 8.8 * rc_full_cycle / 100;	
 
@@ -398,7 +372,7 @@ unsigned char U1Rx(void)
 	char data[128];
 
 	U1STAbits.OERR = 0;
-	U1STAbits.FERR == 0;
+	U1STAbits.FERR = 0;
 
 	while(i < 128) {
 		/* Check for receive errors */
@@ -417,7 +391,6 @@ unsigned char U1Rx(void)
 			data[i-1] = ch;
 		}
 	}
-printf("In U1Rx Received data = (%s)= \n", data);
 	return (ch);
 }
 
@@ -437,6 +410,7 @@ unsigned char U2Rx(void)
 	ch = U2RXREG;
 	return(ch);
 }
+
 void U2Tx(unsigned char ch)
 
 {
@@ -450,159 +424,21 @@ void BlueToothTest(void)
 	int i;
 
 	char *buf = "Hello World\n Enter character ";
-	printf("CRK-DEBUG BlueTooth Test !!!\n");
+	printf("DEBUG BlueTooth Test !!!\n");
 	for (i=0; i < strlen(buf); i++) {
 		U2Tx(buf[i]);
 	}
 }
 		
-
-boolean	TraceAndLogGPSRecord(nmea_rec *gps_rec)
-{
-	int i = 0;
-	char buf[MAXLINELENGTH*2];
-	int n = MAXLINELENGTH * 2;
-	int overrunerror = 0;
-	int rxerror = 0;
-	int j = 0;
-
-	crk_bzero(buf, n);
-    printfBT("\n\rCRK-DEBUG Tracing and collecting GPS record \n");
-	U1STAbits.URXISEL = 0;
-	U1STAbits.FERR = 0;
-	U1STAbits.OERR = 0;
-	j = 0;
-	while (i < n) { // No of tries is 256
-		/* Check for receive errors */
-		if(U1STAbits.FERR == 1) {
-    		printf("CRK-DEBUG Testing GPS Error !!! i = (%d) \n", i++);
-			rxerror++;
-			U1STAbits.FERR = 0;
-			continue;
-		}
-		/* Must clear the overrun error to keep UART receiving */
-		if(U1STAbits.OERR == 1) {
-			U1STAbits.OERR = 0;
-			overrunerror++;
-    		printf("CRK-DEBUG Testing GPS Error Overrun !!! i = (%d) \n", i++);
-			continue;
-		}
-		/* Get the data */
-		if(U1STAbits.URXDA == 1) {
-			buf[j++]  = U1RXREG;
-		}
-	}
-
-	if (rxerror || overrunerror) {
-  		printfBT("\n\rCRK-DEBUG Testing ... GPS Error !!!");
-		crk_bzero(btbuf, BTBUF); sprintf(btbuf, "\n\rCRK-DEBUG GPS Testing error rxerror = (%d) overrunerror = (%d)", rxerror, overrunerror);printfBT(btbuf);
-		return false;
-	}
-
-	printf("\n\rCRK-DEBUG Buffer = (%s)\n", buf);
-	printfBT(buf);
-	return (GetGPRMCorGPGGA(buf, gps_rec));
-}
-
-void ServoTest()
-
-{
-
-	int i = 0;
-
-	printf("CRK-DEBUG Starting test in 5 secs !!!");
-	DelayInSeconds(5);
-
-	// CH1 controls steering
-	for(i=0; i <10; i++) {
-		printf("CRK-DEBUG Turn Left\n");
-		TurnLeft();
-		DelayInSeconds(50);
-		printf("CRK-DEBUG Come to  Middle\n");
-		Middle();
-		DelayInSeconds(50);
-		printf("CRK-DEBUG Turn Right\n");
-		TurnRight();
-		DelayInSeconds(50);
-
-		// CH2 Test
-		printf("CRK-DEBUG Move 1 Backword\n");
-		MoveBack();
-		DelayInSeconds(50);
-		printf("CRK-DEBUG Move 2 Backword\n");
-		MoveBack();
-		DelayInSeconds(50);
-		printf("CRK-DEBUG Stop\n");
-		Stop();
-		DelayInSeconds(50);
-		printf("CRK-DEBUG Move 1 Forward\n");
-		MoveFwd();
-		DelayInSeconds(50);
-		printf("CRK-DEBUG Move 2 Forward\n");
-		MoveFwd();
-		DelayInSeconds(50);
-	}
-}
-
-void SPITestSram(void)
-{
-    //more code for application goes here.
-	unsigned char c;
-    Write_Status_Reg(0x1);
-   
-    while((Read_Status_Reg() & 0xC1) == 0x03)
-     Read_Status_Reg();
-    Write_Byte_Sram(0x0000,20);//
-   
-    c = Read_Byte_Sram (0x0000);
-	printf("CRK-DEBUG CRK-DEBUG Should read back 20 %d \n", c);
-}
-
-void SPITestFlash(void)
-{
-	unsigned char c;
-	int i;
-
-	printf("CRK-DEBUG Testing SPI flash now \n");
-	WREN();
-	printf("CRK-DEBUG Status2 Reg1 = (%x)\n", ReadStatusReg());
-    WriteStatusReg(0x0);
-	WREN();
-	BulkErase();
-
-	printf("CRK-DEBUG Status4 Reg2 = (%x)\n", ReadStatusReg());
-    DelayInSeconds(10);
-	printf("CRK-DEBUG Status5 Reg21 = (%x)\n", ReadStatusReg());
-	WREN();
-    DelayInSeconds(10);
-	printf("CRK-DEBUG Status5 Reg22 = (%x)\n", ReadStatusReg());
-	c= Write_Byte_Flash(0x02, 0x020000, 45); // When WEL = 1 perform write
-
-	printf("CRK-DEBUG Status6 Reg3 = (%x)\n", ReadStatusReg());
-    DelayInSeconds(1);
-	c = Read_Byte_Flash(0x03,0x020000); // When WIP = 0 read byte back
-	printf("CRK-DEBUG Status7 Reg4 = (%x)\n", ReadStatusReg());
-    
-	printf("CRK-DEBUG Hello World This is what I read from flash (%d)\n", c);
-	printf("CRK-DEBUG Looping now\n");
-	for ( i = 0; i < 255; i++) {
-		WREN();
-		c= Write_Byte_Flash(0x02, 0x020000+i, i); // When WEL = 1 perform write
-    	DelayInSeconds(1);
-		c= Read_Byte_Flash(0x03, 0x020000+i); // When WEL = 1 perform write
-		printf("CRK-DEBUG %d. Hello World This is what I read from flash (%d)\n", i, c);
-	}
-}
-
 //TBD
 void SPITestMagnet(void)
 {
     unsigned char status;
 
-	printf("CRK-DEBUG Now dping SPI Test !!!\n");
+	printf("DEBUG Now dping SPI Test !!!\n");
 	while (1) {
 		status = SPI_Receive();
-		printf("CRK-DEBUG SPI receceive = (%c)\n", status);
+		printf("DEBUG SPI receceive = (%c)\n", status);
 		DelayInSeconds(1);
 	}
 	
@@ -661,7 +497,7 @@ void UART1Init(void)
     U1MODEbits.UEN    = 0;
     U1MODEbits.PDSEL  = 0; // 8-bit data, no parity // MUST
     U1MODEbits.STSEL  = 0; // 1 stop bit// MUST
-    U1MODEbits.ABAUD  = 0; // No auto baud // CRK
+    U1MODEbits.ABAUD  = 0; // No auto baud 
     U1MODEbits.LPBACK = 0; // No loopback mode
     U1STA             = 0;
     U1STAbits.UTXEN   = 1; // Enable transmit
@@ -684,7 +520,7 @@ void UART2Init(void)
     U2MODEbits.UEN    = 0;
     U2MODEbits.PDSEL  = 0; // 8-bit data, no parity // MUST
     U2MODEbits.STSEL  = 0; // 1 stop bit// MUST
-    U2MODEbits.ABAUD  = 0; // No auto baud // CRK
+    U2MODEbits.ABAUD  = 0; // No auto baud 
     U2MODEbits.LPBACK = 0; // No loopback mode
     U2STA             = 0;
     U2STAbits.UTXEN   = 1; // Enable transmit
@@ -693,7 +529,7 @@ void UART2Init(void)
 
 void UARTTest(void)
 {
-    printf("CRK-DEBUG Hello 1 World Clock details COSC (%x) NOSC = (%x) \n", OSCCONbits.COSC, OSCCONbits.NOSC); 
+    printf("DEBUG Hello 1 World Clock details COSC (%x) NOSC = (%x) \n", OSCCONbits.COSC, OSCCONbits.NOSC); 
         DelayInSeconds(2);
 
 }
@@ -736,9 +572,9 @@ unsigned char GetBTInput(void)
 	while (1) {
 		char *buf = "\n\rEnter Command:  ";
 
+		crk_bzero(btbuf, BTBUF); sprintf(btbuf, "%s", buf);printfBT(btbuf);
 		ch = U2Rx();
 		U2Tx(ch); // Echo back what you read
-		crk_bzero(btbuf, BTBUF); sprintf(btbuf, "%s", buf);printfBT(btbuf);
 		return(toupper(ch)); // All commands are single character ones
 	}
 }
@@ -769,8 +605,24 @@ void NotImplemented(void)
 	printfBT("Not Implemented\n");
 }
 
+
 void Ignition(void)
 {
+	double time;
+	int seconds;
+	int milliseconds;
+
+	printf("\n\rDEBUG distance = (%f)", rc_dist2target);
+	printf("DEBUG Servo test FWD !!! P2TPER = (%d) P2DC1 = (%d) rc_fwd = (%d) \n", P2TPER, P2DC1, rc_fwd);
+	TimeOfTravel(rc_dist2target, &time, &seconds, &milliseconds);
+
+	
+	Stop(); // Always stop before moving forward ... otherwise the car does not work
+	P2DC1 = rc_fwd; 
+	P2TCONbits.PTEN = 1;
+ 	DelayInSeconds(seconds);
+	delay_ms(milliseconds);
+	Stop(); 
 }
 void ExitParser(void)
 {
@@ -804,7 +656,7 @@ void Trace(void)
 	crk_bzero(buf, MAXLINELENGTH);
 	status = GetGPSLine(buf);
 	if (status == false) {
-		printfBT("CRK-DEBUG Could not track satellite or get GPRMC or GGPA records. Try later\n");
+		printfBT("DEBUG Could not track satellite or get GPRMC or GGPA records. Try later\n");
 		return;
 	}
 	printfBT(buf);
@@ -832,7 +684,7 @@ void GPSFix(void)
 		crk_bzero(buf, MAXLINELENGTH);
 		status = GetGPSLine(buf);
 		if (status == false) {
-			printfBT("CRK-DEBUG Could not track satellite or get GPRMC or GGPA records. Try later\n");
+			printfBT("DEBUG Could not track satellite or get GPRMC or GGPA records. Try later\n");
 			return;
 		}
 		printfBT(buf);
@@ -842,8 +694,12 @@ void GPSFix(void)
 		if (status == true) {
 			if(rc_src.fix == true || rc_src.fixquality != 0) { 
 				//=> We found record with a fix ='A' for GPRMC, qual = 1 for GPGGA
-				printfBT("Successfully found GPS record of with fix.\n");
+				printfBT("GPSFIX: Successfully found GPS record of with fix.\n");
+				printfBT("GPS Raw data:" );
 				printfBT(rc_src.raw);
+				printfBT("\n\r");
+				crk_bzero(buf, 128); sprintf(buf, "    Latitude = (%lf) Longitude = (%lf)\n\r",rc_src.latitude2, rc_src.longitude2);printfBT(buf);
+				
 				return;
 			}
 		}
@@ -910,27 +766,15 @@ void GetDestination(void)
 	if(lon == 'W')
 		rc_dst.longitude2 =  (-1.0) * longitude;
 
-
-printf("\n\rCRK-DEBUG rbuf2 = (%s) longitude = (%f) \n\r", buf2, longitude);
-printf("CRK-DEBUG buf1 = (%s) latitude = (%f)\n\r", buf1, latitude);
-
-printf("CRK-DEBUG rc_dst.longitude = (%f) (%c) \n\r", rc_dst.longitude2, lon);
-printf("CRK-DEBUG rc_dst.latitude = (%f) (%c)\n\r", rc_dst.latitude2, lat);
-	
     rc_dist2target =  distance2(rc_src.latitude2, rc_src.longitude2,
             rc_dst.latitude2, rc_dst.longitude2,'M'); //  distance meters.
 
 	crk_bzero(buf, 128); sprintf(buf, "\n\rSource: Latitude = (%lf) (%lf) ", rc_src.latitude2, rc_src.longitude2);printfBT(buf);
 	crk_bzero(buf, 128); sprintf(buf, "\n\rDestination: Latitude = (%lf) (%lf) ", rc_dst.latitude2, rc_dst.longitude2);printfBT(buf);
-    printf("Distance2 = (%lf)\n", rc_dist2target);
-
-    rc_dist2target =  distance(rc_src.latitude2, rc_src.longitude2,
-            rc_dst.latitude2, rc_dst.longitude2,'M'); //  distance meters.
 	crk_bzero(buf, 128); sprintf(buf, "\n\rDstance to travel = (%lf meters)",rc_dist2target);printfBT(buf);
-    printf("CRK-DEBUG Distance = (%lf)\n", rc_dist2target);
 
     if (rc_dist2target <= rc_proximity_distance) {
-            printf("CRK-DEBUG Reached Destination with in (%lf)\n",rc_proximity_distance);
+            printf("Reached Destination with in (%lf)\n",rc_proximity_distance);
 			crk_bzero(buf, 128); 
 			sprintf(buf, "\n\rReached Destination with in (%lf)\n",
 						rc_proximity_distance);
@@ -990,34 +834,20 @@ boolean GetGPSLine(char *buffer)
 
     printfBT("\n\rTesting GPS ... if this you do not see any output in 60 secomds ... Reset the system\r\n");
 	U1STAbits.URXISEL = 0;
-	U1STAbits.FERR == 0;
+	U1STAbits.FERR = 0;
 	U1STAbits.OERR = 0;
 	j = 0;
 	while (1) {
-	/* Check for receive errors */
-	if(U1STAbits.FERR == 1) {
-    	printf("CRK-DEBUG Testing GPS Error !!! i = (%d) \n", i++);
-		U1STAbits.FERR = 0;
-		continue;
-	}
-	/* Must clear the overrun error to keep UART receiving */
-	if(U1STAbits.OERR == 1) {
-		U1STAbits.OERR = 0;
-    	printf("CRK-DEBUG Testing GPS Error Overrun !!! i = (%d) \n", i++);
-		continue;
-	}
 	/* Get the data */
-	if(U1STAbits.URXDA == 1) {
-		buf[i++]  = U1RXREG;
-		if(i == MAXLINELENGTH) {
-			buf[MAXLINELENGTH-1] = 0;
-			strcpy(buffer, buf);
-//			printf("CRK-DEBUG Buffer = (%s) strlen buf = (%d) \n", buf, strlen(buf));
-			return true;
+		if(U1STAbits.URXDA == 1) {
+			buf[i++]  = U1RXREG;
+			if(i == MAXLINELENGTH) {
+				buf[MAXLINELENGTH-1] = 0;
+				strcpy(buffer, buf);
+				return true;
+			}
 		}
 	}
-	}
-	printf("CRK-DEBUG test out j = (%d)\n",j);
 	return(false);
 }
 
@@ -1049,6 +879,7 @@ double distance2(double lat1, double lon1, double lat2, double lon2, char unit) 
 	d2 =sqrt(d1);
 
 	dist = 2 * 6371000.0 * asin(d2);
+printf("%s: src: lat(%lf) lon(%lf)  dst: lat(%lf)  lon(%lf)  returns (%lf)\n", __FUNCTION__, lat1, lon1, lat2, lon2, dist);
   	return (dist);
 }
 
@@ -1132,6 +963,7 @@ void GetLatitude(char *p, double *latitude, double* degrees, double *minutes)
     buf2[7] = buf[7];
     buf2[8] = buf[8];
     buf2[9] = 0;
+sscanf(buf2, "%lf", latitude); 
 	
 	c2 = buf[2];
 	buf[2] = 0;
@@ -1139,8 +971,10 @@ void GetLatitude(char *p, double *latitude, double* degrees, double *minutes)
 	*degrees = (double)ft2;
 	buf[0] = '0'; buf[1] = '0'; buf[2] = c2;
 	sscanf(buf+2, "%lf", minutes);
+printf("DEBUG %s: buf= (%s) latitude2  = (%lf)\n", __FUNCTION__, buf2,  *latitude);
 
 }
+
 void GetLongitude(char *p, double *longitude, double* degrees, double *minutes)
 {  
 	char *p1, *p2;
@@ -1177,6 +1011,8 @@ sscanf(buf2, "%lf", longitude);
 	*degrees = (double)ft2;
 	buf[0] = '0'; buf[1] = '0'; buf[2] = 0; buf[3]= c3;
 	sscanf(buf+3, "%lf", minutes);
+
+printf("DEBUG %s: buf= (%s) longitude2  = (%lf)\n", __FUNCTION__, buf2,  *longitude);
 
 }
 
@@ -1239,7 +1075,7 @@ boolean parse_NMEA(nmea_rec *rec) {
     }
     if (sum != 0) {
       // bad checksum :(
-	  printf("CRK-DEBUG Bad checksum for (%s)\n", gpa);
+	  printf("DEBUG Bad checksum for (%s)\n", gpa);
 	  rec->valid = false;
       return false;
     }
@@ -1249,7 +1085,7 @@ boolean parse_NMEA(nmea_rec *rec) {
   char degreebuff[10];
   // look for a few common sentences
   if (strstr(nmea, "$GPGGA")) {
-printf("CRK-DEBUG Found GPGGA\n");
+printf("DEBUG Found GPGGA\n");
     // found GGA
     char *p = nmea;
     // get time
@@ -1275,7 +1111,7 @@ printf("CRK-DEBUG Found GPGGA\n");
       p += 3; // skip decimal point
       strncpy(degreebuff + 2, p, 4);
       degreebuff[6] = '\0';
-//printf("CRK-DEBUG degree buf = (%s)\n", degreebuff);
+//printf("DEBUG degree buf = (%s)\n", degreebuff);
       minutes = 50 * atol(degreebuff) / 3;
       latitude_fixed = degree + minutes;
       latitude = degree / 100000 + minutes * 0.000006F;
@@ -1323,7 +1159,7 @@ printf("CRK-DEBUG Found GPGGA\n");
     p = strchr(p, ',')+1;
     if (',' != *p)
     {
-//CRK      if (p[0] == 'W') longitudeDegrees *= -1.0;
+//      if (p[0] == 'W') longitudeDegrees *= -1.0;
       if (p[0] == 'W') lon = 'W';
       else if (p[0] == 'E') lon = 'E';
       else if (p[0] == ',') lon = 0;
@@ -1425,7 +1261,7 @@ printf("CRK-DEBUG Found GPGGA\n");
     hour = time / 10000;
     minute = (time % 10000) / 100;
     seconds = (time % 100);
-printf("CRK-DEBUG Found GPRMC !!!\n");
+printf("DEBUG Found GPRMC !!!\n");
 
     milliseconds = fmod(timef, 1.0) * 1000;
 
@@ -1507,7 +1343,7 @@ printf("CRK-DEBUG Found GPRMC !!!\n");
     p = strchr(p, ',')+1;
     if (',' != *p)
     {
-//CRK      if (p[0] == 'W') longitudeDegrees *= -1.0;
+//      if (p[0] == 'W') longitudeDegrees *= -1.0;
       if (p[0] == 'W') lon = 'W';
       else if (p[0] == 'E') lon = 'E';
       else if (p[0] == ',') lon = 0;
@@ -1623,7 +1459,7 @@ boolean GetGPRMCorGPGGA(char *buf,  nmea_rec *rec )
 	raw[j++] = 0;
 	if((strncmp(raw, "$GPRMC", 6) == 0) || 
 				(strncmp(raw, "$GPGGA", 6) == 0)) {
-printf("CRK-DEBUG !!! FOund record (%s)\n", raw);
+printf("(%s) DEBUG !!! FOund record (%s)\n", __FUNCTION__, raw);
 		parse_NMEA(rec);
 		if (rec->valid == true) {
 			gps_print_NMEA_line(rec);
@@ -1633,23 +1469,20 @@ printf("CRK-DEBUG !!! FOund record (%s)\n", raw);
 	return (false);
 }
 
-/* Main routine and alogorithm
-	Initialize the hardware
-		- Initialize DSP ( Heart )
-			- Basic initialization
-			- Based on Hardware assembled initialize the pinouts
-			- We need at least the following ones:
-				- Debug and Printf - One UART1
-				- GPS interface : One UART2
-				- I2C based Magnetometer interface
-				- PWM interface for the Servo
-				- In addition we may need:
-					- SPI based FLASH ?
-					- Bluetooth (UART ? ) for Point B access
-				
-		- Run Some diagnostics to ensure HW is right
-			- R/W on SPI
-			- UART Loopback test 	
+/* Basic hard ware wiring:
+	UART1 : 
+		Tx:Used for printf ( via tty serial cable for debug purpose )
+		Rx: GPS Tx is connected to this Rc, so that UART1 can receive and
+		    process GPS data
+	UART2:
+		Tx: Transmit to Bluetooth 
+		Rx: Reveivce ( Parser input )  from Bluetooth.
+	SPI:
+		INterface is implemennted but not tested with Magnetometer.
+		SPI worked weill with Flash and SRAM
+
+   Software: Main routine and alogorithm
+		- Initialize the hardware
 		- Initialize GPS ( To get current co-ordinates of the Car PointA)
 		- Initialize Bluetooth ( To get information on where the target is )
 		- Initialize magnetometer ( To get the alignment with North pole )
@@ -1664,21 +1497,9 @@ printf("CRK-DEBUG !!! FOund record (%s)\n", raw);
 		- Calculate straight line distance between A & B
 		- Calculate the angle we need to turn to face the target
 		- Start the car to move towards destination
-		 
-	Main Loop :
-		while (1) {
-			- Read GPS and Get current location of Car - A
-			- Get the location of the target - B
-			- if  (B has not changed )  
-				continue
-			- D = Calculate distance between A and B
-			- Send the Data on A and B co-ordinates and distance 
-			  to some debug terminal/Webpage.
-			- if The distance D is within the limits then
-				We have reached destination. Time to stop
-			- If needed
-				Program Servo to change direction and other parameters
-		}
+		- Execute parser in loop.
+
+		- Parser exists/Halts the system.
 
 */
 int main(void) 
@@ -1689,20 +1510,16 @@ int main(void)
 	UART1Init();
 	UART2Init();
 	printfBT("\n\rIf You see this, that means BlueTooth Initialized\n");
-    LEDInit();
 	SPIInit();
 	ServoInit();
 	printfBT("\n\rSystem Initialized and Read to go\n");
 	printfBT("\n\rBasic testing in progress\n");
 
-	LEDTest();
-
 	BlueToothTest();
-// SPITestFlash();
-//	SPITestMagnet();
-//	ServoTest();
+// SPITestFlash(); : // Not needed for Car
+//	SPITestMagnet(); // Not implemented
 	Parser();
-	
+					// TBD we can do much more later.	
 	
 	fflush(stdout);
     return 0;
