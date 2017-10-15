@@ -1,7 +1,10 @@
+Please refer to the PDF located in this directory to see the report that was created for this project.
+
+Thank you for taking the time to look at this repository!
+
 Bluetooth:
     sudo rfcomm bind 0 00:06:66:6D:FE:95 1
     screen /dev/rfcomm0
-
 
 Directory:
     /home/curam/MPLABXProjects/test.X
@@ -9,3 +12,4 @@ Directory:
 Source files:
     robocar.c
     robocar.h
+	
